@@ -1,0 +1,161 @@
+#+TITLE: Day 1
+* Introductions
+** Noel Welsh
+** Daniel Schentzer Fava
+2 months Scala
+C and assembly, Python, Go
+Microservices. Data engineer
+** Daniele Grasso
+1 year Scala
+Interested in web in general
+Started as front end developer
+Javascript, Java, Node.js
+Data engineer
+** Federico Lancerin
+Engineer---backend and sys admin
+Devops
+No Scala experience (?)
+Python, Go, Java, YAML
+** Henrik Nerdrum
+7-8 months sporadic Scala
+Frontend development & Backend development
+Node.js Typescript
+Would like to get more Scala experience
+** Hyacinthe Malaspina
+Embedded developer. C, Java
+Data engineer
+Little bit of Scala and Python
+** Jarl Fagerli
+Scala since 2016
+Akka / imperative.
+Interested in functional side. Cats
+** Joel Ekelof
+Data engineer. Data ingestion
+1 year Scala. Not advanced Scala
+Routing language + Python
+** Lars Christian Wilk
+Data engineer
+Scala 1.5 years
+Python, ML (deep learning and simpler stuff)
+** Maria Slanova
+ML engineer
+Mostly Python.
+Interests in AI / ML.
+Had to write some Scala (~1 year)
+Deep learning
+** Nils
+ML engineer
+Primarily Python
+Hasn't done much Scala
+Done a bit of Java, C#, Swift
+Game programming, C++
+Scala is for preprocessing / feature engineering (Spark)
+** Sofie
+ML engineer
+Data scientist moving into more ML
+Did some Scala courses
+Deep learning
+** Tor
+Data engineer
+Scala since 2015
+Before lots of Java
+
+* Techniques
+- Metacognition
+- Peer learning
+- Notes
+* What is Best
+- Readable
+  - Naming: use domain terminology
+  - Use ASCII, not symbols / emoji / etc.
+  - Clarity (longer names) over concision (abbreviations)
+  - Known patterns
+  - Single responsibility principle: do one thing and do it well
+  - Good abstractions
+    - Levels
+    - Uniform / consistent (doesn't leak in certain dimensions)
+    - Appropriate abstraction
+  - Minimise state: need to know history to understand current program operation
+- Maintainable
+  - Dependencies---only use what is essential / well-supported
+  - Readable
+  - Testable
+- Testable
+  - Smaller functions---fewer dependencies
+  - Minimise state
+- Consistent in style
+- Malleable / changeability
+  - Fewer dependencies
+  - Well defined interfaces
+  - Less state
+  - Less tests (controversial?)
+  - Testable as a black box
+  - Reducing side effects
+- Simple to understand
+- Performant
+- Actually runs
+
+Functional Programming (FP) believes in:
+- reasoning
+- composition
+- fancy words (for simple ideas)
+
+Reasoning: the ability to understand code (without running it)
+- Substitution model of evaluation
+- Substitute equals for equals
+  val x = 1
+  val y = x
+
+  val x = 1
+  val y = 1
+
+  Replace a name with its value
+
+
+  val y = (1 + 1) + (1 + 1)
+
+  val x = 1 + 1
+  val y = x + x
+
+  Replace a value with a name
+
+
+  val x = 1 +1
+
+  val x = 2
+
+  Replace expressions with the value they evaluate to
+- A program that breaks substitution
+  val x = println("Hi there!")
+  val y = println("Hi there!")
+
+  val x = println("Hi there!")
+  val y = x
+
+  What is a side effect? Anything that break substitution
+  FP hates side effects / runtime meta programming / reflection
+
+- composition: build big things out of small things
+  - closed under composition
+
+* Types & Expressions
+Expressions are program text (you can write them in a file, on a piece of paper, on a wall, etc.) Example: 1 + 1
+
+Value is something in the computer's memory. An expression evaluatest to a value.
+
+Expressions are program text that evaluate to values. (There are also declarations and some languages have statements.)
+
+1 + 1 = 2
+
+Analogy:
+- expression = writing
+- evaluation = reading (giving meaning)
+- value = understanding (in the computer's memory / our memory)
+
+Types are properties of expressions not values
+- Exist at compile time
+- Types specify a set of possible values
+
+Values may have tags (but these are not types and are not guaranteed to exist)
+- Often values are tagged with a tag that reflects at runtime their compile-time type
+- But not always
