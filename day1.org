@@ -59,7 +59,9 @@ Deep learning
 Data engineer
 Scala since 2015
 Before lots of Java
-
+** Notes
+- Mentors: Jarl, Tor
+- Least experienced: Sofie, Nils, Maria, Federico
 * Techniques
 - Metacognition
 - Peer learning
@@ -137,7 +139,10 @@ Reasoning: the ability to understand code (without running it)
 
 - composition: build big things out of small things
   - closed under composition
-
+* Problem Solving Strategies
+- Reasoning: logic, needs a model. Can generalise to all situations. Types.
+- Empiricism: science, inspecting the natural world. Only gives us information about a specific situation. Tests, logging, debugging
+- Appeal to authority: ask a friend, read a book. Authorities may not be trustworthy. FAKE NEWS!
 * Types & Expressions
 Expressions are program text (you can write them in a file, on a piece of paper, on a wall, etc.) Example: 1 + 1
 
