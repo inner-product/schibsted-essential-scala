@@ -61,3 +61,75 @@ Case class
 
 Sealed trait
 - Can only be extended within the file in which it is declared
+** Structural Recursion
+- Proof by induction
+- We can implement structural recursion using pattern matching (FP) or polymorphism (OO).
+*** Pattern Matching
+Pattern matching is an expression in Scala that allows us to decompose data according to its shape.
+
+If A is a B and C
+final case class A(b: B, c: C)
+
+anA match {
+  case A(b, c) => ???
+}
+
+If A is a B or C
+sealed trait A
+final case class B() extends A
+final case class C() extends A
+
+anA match {
+  case B() => ???
+  case C() => ???
+}
+
+Details:
+<expr> match {
+   case <pattern1> => <rhsExpr1>
+   case <pattern2> => <rhsExpr2>
+   ...
+}
+
+We match the value of <expr> against the patterns until a pattern matches, and then we evaluate the right hand side expression of that pattern.
+
+What is a pattern:
+- A literal matches that value
+
+2 match {
+  case 2 => true
+}
+
+2 match {
+  case 1 => 0
+  case 2 => 42
+}
+
+- An idenitifier (alphanumeric word) matches anything and binds the identifier to the matched value in the right hand side expression
+
+2 match {
+  case anything => s"anything is $anything"   // "anything is 2"
+}
+
+2 match {
+  case 1 => 0
+  case other => 42 + other
+}
+
+- An underscore matches anything but does not bind a name
+
+2 match {
+  case 1 => 0
+  case _ => 42
+}
+
+- A case class has a pattern that has the same shape as constructing the case class and matches the case class
+
+Customer("Noel", 1, "My house") match {
+  case Customer("Dave", _, _) => "Not the droids we're looking for"
+  case Customer("Noel", _, _) => "The droids we're looking for"
+}
+
+Customer("Noel", 1, "My house") match {
+  case Customer(name, _, address) => s"$name I know you live at $address"
+}
