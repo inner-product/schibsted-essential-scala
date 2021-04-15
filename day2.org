@@ -1,0 +1,63 @@
+#+TITLE: Day2
+* Composition
+* Algebraic Data Types
+Represent data in terms of:
+- logical ands (product types)
+- logical ors (sum types)
+- and nothing else
+
+Customer is a name and an id and an address
+Result is a Success or Failure
+
+Closed world---cannot extend
+- get better error checking---compiler can tell us if we miss a case
+
+Languages with ADTS include
+- Typescript
+- Rust
+- Swift
+- Haskell
+- Scala
+** Implementation
+- Denotational understanding: what it means. Shorter.
+- Operational understanding: how it works. More involved.
+
+Product types
+
+A is a B and C
+final case class A(b: B, c: C)
+
+Example
+Customer is a name (String), id (UUID), and address (String)
+final case class Customer(name: String, id: UUID, address: String)
+
+(Not everyone makes their case classes final.)
+
+Sum types
+
+A is a B or C
+sealed trait A
+final case class B() extends A
+final case class C() extends A
+
+Example
+Result is a Success (Int) or a Failure (String)
+
+sealed trait Result
+final case class Success(code: Int) extends Result
+final case class Failure(message: String) extends Result
+
+
+Operational understanding:
+- A case class is a class with additional stuff
+- A case class should always be an immutable container for data
+- A sealed trait is a restricted trait
+
+Case class
+- Has a convenience constructor (don't have write new)
+- Value equality
+- Hashcode
+
+
+Sealed trait
+- Can only be extended within the file in which it is declared
