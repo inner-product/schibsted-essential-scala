@@ -1,0 +1,176 @@
+#+TITLE: Day 3
+* Generic Types
+Aka type parameters, parametric polymorphism
+
+We know has to write a specific type.
+Analogous to method parameters
+- define them on a type (trait, class) or a method
+  #+begin_lang scala
+    sealed trait Maybe[A]
+
+    case class Pipe[In,Out]
+
+    def map[B](f: A => B)
+  #+end_lang
+- Type is not known at the point of definition (can be any specific type, but we don't know what that type is), but must be known (concrete) at the point of use (i.e. when using a concrete instance)
+
+- Declaration and use of type parameters
+  - Declare like a method parameter: declare a name for types: ~[A]~ for method parameters: ~(a: A)~
+  - Use of a type parameter: refer to the parameter type parameter ~A~ or method parameter: ~a~
+
+- Scope: declared on a type it is visible within that type, declared on a method only visible within that method
+
+Detour into companion objects
+- ~apply~ method
+* Functions
+Literal syntax
+#+begin_lang scala
+(x: Int) => x + 42
+x => x + 42 // when type inference works
+(a, b) => a + b // when more than one parameter must use parens
+x => {
+  val a = x
+  a + 42
+}
+#+end_lang
+
+Type syntax
+#+begin_lang scala
+Int => String
+(Food) => Cat
+(Food, Snuggles) => Cat
+#+end_lang
+
+Functions as objects
+- methods are not objects
+- you can pass a function to a method or function, but you cannot pass a method to a method or function
+- you can return a function from a method or function, but you cannot return a method from a method or function
+- you can give a function a name with ~val~
+- calling a function is calling the ~apply~ method on it
+- functions have other methods for composition
+- convert a method to a function by using ~methodName _~ or ~methodName(_)~
+- traits ~Function0~ etc that functions extend. Very rare to use these directly. Usually use the type syntax above.
+* Validation
+#+begin_lang scala
+sealed trait Rule[I] {
+  import Rule._
+
+  def and(that: Rule[I]): Rule[I] =
+    And(this, that)
+
+  def or(that: Rule[I]): Rule[I] =
+    Or(this, that)
+
+  def apply(data: I): Either[String, I] =
+    this match {
+      case Literal(p, r) =>
+        if(p(data)) Right(data) else Left(r(data))
+	  case And(left, right) =>
+        val result1 = left.apply(data)
+        val result2 = right.apply(data)
+
+        (result1, result2) match {
+          case (Left(e1), Left(e2)) => Left(e1 ++ e2)
+          case (Right(r1), Left(e2)) => Left(e2)
+          case (Left(e1), Right(r2)) => Left(e1)
+          case (Right(r1), Right(r2)) => Right(data)
+        }
+
+	  case Or(left, right) =>
+        val result1 = left.apply(data)
+        val result2 = right.apply(data)
+
+        (result1, result2) match {
+          case (Left(e1), Left(e2)) => Left(e1 ++ e2)
+          case (Right(r1), Left(e2)) => Right(data)
+          case (Left(e1), Right(r2)) => Right(data)
+          case (Right(r1), Right(r2)) => Right(data)
+        }
+    }
+}
+object Rule {
+  final case class And(left: Rule[I], right: Rule[I]) extends Rule[I]
+  final case class Or(left: Rule[I], right: Rule[I]) extends Rule[I]
+  final case class Literal(predicate: Predicate[I], report: Report[I]) extends Rule[I]
+
+  def apply(predicate: Predicate[I], report: Report[I]): Rule[I] =
+    Literal(predicate, report)
+
+  val nonEmptyString: Rule[String] =
+    Rule[String](string => string.nonEmpty, _ => "The string cannot be empty")
+
+  def stringLengthLessThan(limit: Int): Rule[String] =
+    Rule[String](string => string.size < limit, string => s"The string has size ${string.size} which is equal or above the limit of ${limit}")
+
+  val stringNonEmptyAndLessThan32Characters: Rule[String] =
+    nonEmptyString.and(stringLengthLessThan(32))
+}
+#+end_lang
+* Collection Classes
+Collection classes live in ~scala.collection.immutable~ or ~scala.collection.mutable~. Some are already imported (part of Predef).
+
+- Sequences
+- Maps
+- Constructing
+- Querying
+- Transforming
+** Sequences
+Retain order of elements (usually order that are inserted) ~List~, ~ArrayBuffer~, ~Vector~
+*** Constructing
+~empty~: method on the companion object to construct an empty container
+Vararg constructor: ~List()~ ~List(1,2,3)~, etc.
+Preprend and append elements: ~+:~, ~:+~
+If a method works on both mutable and immutable collections it is immutable.
+
+Aside: operator notation vs method call notation
+~a.b(c)~ is equivalent to ~a b c~
+
+Method names that end with a colon (:) are right associative when used as operators
+~a.b:(c)~ is equivalent to ~c b: a~
+*** Querying
+~size~ gets size / length
+~isEmpty~, ~nonEmpty~, etc.
+
+~find~: finds the first element that matches a predicate (a function from element to boolean). Returns an Option (because there may be no match).
+~filter~: finds all the elements that match a predicate. Returns a collection of the same type.
+*** Transformation
+~map~: transforms every element in the collection with the provided function. Number of elements and order does not change.
+
+~F[A] map (A => B) = F[B]~ type equation. ~F~ is the container type and does not change. The element type can change.
+
+~flatMap~: we can think of it as a ~map~ followed by a ~flatten~.
+
+~F[A] flatMap (A => F[B]) = F[B]~ type equation. ~F~ is the container type and does not change. The element type can change.
+
+~getCustomersForLastMonth: List[Customer]~
+~getOrdersForCustomer(customer: Customer): List[Order]~
+
+To get all the orders for the last month
+
+~getCustomersForLastMonth.flatMap(c => getOrdersForCustomer(c))~
+
+~groupBy~: Groups data using a key returned by the function parameter.
+
+~foldLeft~ and ~foldRight~: these are structural recursion
+** Maps
+Maps associate keys with values
+Two type parameters: Key and Value
+
+~Map("a" -> 1, "b" -> 2, "c" -> 3): Map[String, Int]~ with ~String~ keys and ~Int~ values
+
+Note: ~a -> b~ is a tuple, equivalent to ~(a, b)~
+
+Maps work a lot like sequences (that have a ~map~ method, for example)
+
+~mapValues~ to map just the values
+~get~ to get a value by key (returning an ~Option~)
+~+~ to add key-value pairs to the Map
+
+val mm1: HashMap[String, Int] = HashMap("a" -> 1, "b" -> 2)
+val mm2: HashMap[String, Any] = mm1
+
+mm2 += ("c" -> "surprise!")
+
+mm1.get("c")
+** Immutable Collections
+Use structural sharing for efficiency. Sometimes called persistent data structures.
