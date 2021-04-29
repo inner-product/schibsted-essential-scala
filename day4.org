@@ -1,0 +1,235 @@
+#+TITLE: Day 4
+* Topics to Cover
+Joel Ekelöf
+9:06 AM
+futures!
+Nils Törnblom
+9:06 AM
+multiprocessinfg
+Daniele Grasso
+9:06 AM
+error handling
+Mücahit Kantepe
+9:06 AM
+lazy evaluation
+Federico Lancerin
+9:06 AM
+sbt practicalities/dependencies
+Hyacinthe Malaspina
+9:07 AM
+implicits
+* Object-oriented Programming
+- traits
+- classes
+- abstract methods
+** Traits
+Traits are (kinda) fundamental abstraction in Scala.
+It's like an interface in Java
+
+Traits:
+- cannot have constructors (though that is changing)
+- can have implementations of methods
+- can have unimplemented methods (abstract methods)
+- can have instance variables / data as well
+- a class or trait can extend multiple traits (but only one class)
+- can have generic types (like classes)
+
+
+#+begin_lang scala
+trait Example {
+  // No implementation---an abstract method. Concrete classes that extend this must implement the method
+  def add42(x: Int): Int
+
+  // Implemented method
+  def add0(x: Int): Int = x + 0
+
+  // Declare instance variables
+  val fortyTwo: Int = 42
+
+  val double: Int => Int = x => x * 2
+}
+#+end_lang
+
+Using a trait: extend it
+
+#+begin_lang scala
+class AClass extends Example
+#+end_lang
+
+You can extend more than one trait
+
+#+begin_lang scala
+class AClass extends Example with ExampleTrait2 with ExampleTrait3
+#+end_lang
+
+#+begin_lang scala
+trait ATrait extends Example with ExampleTrait2 with ExampleTrait3
+#+end_lang
+
+
+Order of initialization issues can arise depending on order of extension
+
+#+begin_lang scala
+trait EvaluationOrderMatters {
+  def aMethod: Int
+
+  val aValue: Int = aMethod * 2
+}
+class DumbClass extends EvaluationOrderMatters {
+  def aMethod: Int = 42
+}
+#+end_lang
+
+Simple solution: don't write this kind of code!
+
+If you do want to write this: learn trait linearization which determines the order of initialisation of traits.
+
+~lazy val~ a value that is not initialized until it is accessed. One tool for sorting out order of initialization issues.
+** Uses of Traits
+*** Type classes
+Maybe we'll look at later. They're much more useful than modules
+*** Modules
+Compose units of code like Lego.
+
+Self types:
+#+begin_lang scala
+trait AnExample { self =>
+
+}
+#+end_lang
+
+Just giving an alternate name for ~this~
+
+Self types with a type constraint:
+#+begin_lang scala
+trait AnExample { self: SomeType =>
+
+}
+#+end_lang
+
+Constrains the types that ~AnExample~ can be mixed into (i.e. the types that can extend ~AnExample~). They must implement ~SomeType~.
+
+I.e. a module dependency. You can construct ~AnExample~ if you can provide it with ~SomeType~.
+
+The difference versus
+#+begin_lang scala
+trait AnExample extends SomeType {
+
+}
+#+end_lang
+- if we extend then ~AnExample~ is a ~SomeType~, which means it provides all its public interface
+- if ~SomeType~ has some state, we may want to share that state (i.e. a shared dependency such as a database connection pool; but try to just use a constructor argument instead) or share types.
+
+Sometimes called the Cake pattern. There are some blog posts on this. Used to be used a lot, and now generally avoided.
+*** OO Nonsense
+Mixins---layering behaviour. I find very hard to reason about. Don't do it if you can avoid it.
+
+#+begin_lang scala
+trait Stack[A] {
+  def push(a: A): Unit
+  def pop: Option[A]
+}
+trait LoggingStack[A] extends Stack[A] {
+  def push(a: A): Unit = {
+     println(s"Pushing $a")
+     super(a)
+  }
+  def pop: Option[A] = {
+     println("Pop!")
+     super()
+  }
+}
+class ListStack[A] extends LoggingStack[A] extends Stack[A] {
+  var stack: List[A] = List.empty
+
+  override def push(a: A): Unit = {
+    super(a)
+    stack = a +: stack
+  }
+
+  override def pop: Option[A] = {
+    super()
+    val result = stack.headOption
+    stack = stack.tail
+    result
+  }
+}
+
+val stack = new ListStack[Int]
+stack.push(1)
+stack.pop
+#+end_lang
+** Classes
+Classes are like case classes but:
+- don't have a convenience constructor
+- don't have a nice toString
+- don't have equality by value---by reference instead
+
+#+begin_lang scala
+class Example(constructorParam1: Int, constructorParam2: String) {
+
+}
+#+end_lang
+Unlike a case class we don't automatically bind constructor arguments to an instance variable.
+
+#+begin_lang scala
+class Example(val constructorParam1: Int, val constructorParam2: String) {
+
+}
+#+end_lang
+Using ~val~ in constructor parameters will automatically bind constructor arguments to an instance variable.
+
+Construct an instance using ~new~
+
+#+begin_lang scala
+class Cat(val name: String, val color: String) {
+
+}
+val cat = new Cat("Owl", "Black")
+cat.name // Owl
+#+end_lang
+
+#+begin_lang scala
+class Cat(val name: String = "Owl", val color: String = "Black") {
+   // Fields aka instance variables
+   val purriness: Int = 4
+   val foodStealingAbility: Int = 0
+
+   // Methods
+   def stroke(intensity: Int): String =
+     if(intensity < 5) "Sulk"
+     else "Purr"
+}
+val cat = new Cat("Owl", "Black")
+cat.name // Owl
+#+end_lang
+
+Multiple constructors: define them on the companion object
+
+Case classes should be immutable (i.e. data within them doesn't change). For mutable data or classes that only exist to perform side effects use a class, not a case class.
+* Default Values and Overloading
+Methods and constructors can have default values. ~param: type = value~.
+Can have "interesting" interactions with overloading.
+
+Overloading means have methods with the same name on the same type, but the method parameters differ by type or the number of parameters differs.
+* Companion Object
+A companion object is an object with the same name as a type in the same file as the type.
+Conventional uses of companion objects:
+- defining constructors for the type
+- defining static methods for the type
+- defining type class instances
+* Destructors
+Not really.
+
+#+begin_lang scala
+case class Resource[A](val open: () => A, val close: A => ()) {
+  def use[B](f: A => B): B = {
+    val resource = open()
+    try {
+      f(resource)
+    } finally {
+      close(resource)
+    }
+  }
+}
+#+end_lang

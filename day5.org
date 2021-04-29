@@ -1,0 +1,183 @@
+#+TITLE: Day 5
+* Error Handling
+** Error Consumers
+- End users. Example: form validation. Generally feedback about errors in inputs.
+- Developers. Interested in debugging. Stack traces, intermediate values, etc.
+** Error Control Flow
+- Fail fast: stop as soon as you hit an error
+- Error accumulation: report all the errors. Typically when validating inputs, typically aimed at end users.
+
+Usually error reporting proceeds in stages. Accumulate all errors in a stage. If not errors proceed to next stage otherwise fail.
+
+Example:
+- validate form input
+- save stuff to the database
+- do some action
+
+Each stage only proceeds to next if there are no errors.
+** Error Handling Tools
+- Exceptions, try, and catch
+- Watchdog / New Relic
+- ~Try~, ~Either~
+*** Exceptions
+Exceptions create stack traces which are great for debugging.
+
+~Throwable~ is the base class for all exceptions on the JVM.
+~Error~ is for exceptions that you can't do anything about (e.g. out of memory). Don't catch ~Errors~!
+~Exception~ is for everything else.
+
+~throw~ to raise an exception
+~try~ / ~catch~ / ~finally~ to handle exceptions
+
+#+begin_lang scala
+try <expr> catch <pattern> => <expr> ... finally <expr>
+#+end_lang
+
+
+#+begin_lang scala
+try {
+  val a = 0
+  if (a == 0) throw new Exception("Everything is awful!")
+  else 1
+} catch {
+  case dbz: InvalidArgumentException => println("Bad stuff here")
+  case exn: Exception => println(exn.getMessage())
+} finally {
+  println("This always happens")
+}
+#+end_lang
+
+#+begin_lang options
+case name: Tag => <expr>
+#+end_lang
+Match on a tag (which may or may not be equal to the type)
+
+~finally~ only runs for side effects
+**** Advantages and Disadvantages
+You get stack traces (useful for developers)
+Nothing in the type system forces you to handle errors you want to handle
+Break substitution
+
+Recommendation:
+- Exceptions are ok for developers only errors (i.e. nothing gets reported to the user beyond "something went wrong")
+- Not very good for user errors: type system doesn't help get this right, very unstructured, cannot accumulate errors
+*** Try
+A class in the Scala standard library ~scala.util.Try~. A value or an exception. An algebraic data type.
+
++ sign is variance, which we skipped over.
+#+begin_lang scala
+sealed abstract class Try[+T] { ... }
+final case class Success[+T](value: T) extends Try[T]
+final case class Failure[+T](exception: Throwable) extends Try[T]
+#+end_lang
+
+Basically a wrapper that can hold an exception or a value.
+
+#+begin_lang options
+Try {
+  1 / 0
+}
+#+end_lang
+
+The constructor for ~Try~ will catch exceptions. Turns exceptions into values, maintains substitution.
+
+A lot of methods on ~Try~:
+- ~map~
+- ~flatMap~ (???)
+- ~getOrElse~
+- etc.
+**** Advantages or Disadvantages
+We get stack traces from exceptions, we can interoperate with code that produces exceptions.
+We work with values so we aren't breaking substitution.
+We don't get structured errors and we don't get accumulation.
+*** Either
+#+begin_lang scala
+sealed abstract class Either[A,B] {
+  def map[C](f: B => C): Either[A,C] =
+     this match {
+       case Left(a) => Left(a)
+       case Right(b) => Right(f(b))
+     }
+
+  def flatMap[C](f: B => Either[A,C]): Either[A,C] =
+     this match {
+       case Left(v) => Left(v)
+       case Right(v) => f(v)
+     }
+}
+final case class Left[A,B](value: A) extends Either[A,B]
+final case class Right[A,B](value: B) extends Either[A,B]
+#+end_lang
+
+Left is by convention the error / failure case (boo!)
+Right is the success case
+
+Same understanding of ~map~ and ~flatMap~.
+**** Advantages or Disadvantages
+We can store structured data in the failure case---good for presenting errors to user.
+We don't get easy utilities for working with exceptions (e.g. the constructor doesn't catch exceptions by default)
+~flatMap~ is still fail fast.
+*** Either and Cats
+Error type must be something can be sensibly "added" together. Technically: must have a Semigroup. Good example is ~cats.data.NonEmptyList~.
+
+Use ~parMapN~ on a tuple of ~Either~
+
+Import ~cats.implicits~.
+
+Protip: ~mapN~ / ~parMapN~ builds on an operation called ~product~ that we have already seen (e.g. on animations / transducers)
+
+Type class coherence.
+
+#+begin_lang scala
+  import cats.data.NonEmptyList
+  import cats.implicits._
+  def createUserAccumulate(name: String, password: String, age: String): Either[NonEmptyList[FormError], User] =
+    (validateName(name).leftMap(NonEmptyList.one _),
+     validatePassword(password).leftMap(NonEmptyList.one _),
+     validateAge(age).leftMap(NonEmptyList.one _)).parMapN(
+      (n, p, a) => User(n, p, a)
+    )
+
+  println(createUserAccumulate("Noel", "", "4"))
+#+end_lang
+*** Map and FlatMap
+Type equation for Map:
+
+~F[A] map (A => B) = F[B]~ type equation. ~F~ is the container type and does not change. The element type can change.
+
+F = Try
+#+begin_lang scala
+sealed abstract class Try[A] {
+  def map[B](f: A => B): Try[B] =
+    this match {
+      case Success(v) => Success(f(v))
+      case Failure(e) => Failure(e)
+    }
+}
+final case class Success[A](value: A) extends Try[A]
+final case class Failure[A](exception: Throwable) extends Try[A]
+#+end_lang
+
+~map~ transforms a value when we have a success. Note it cannot introduce a failure!
+
+
+~F[A] flatMap (A => F[B]) = F[B]~ type equation. ~F~ is the container type and does not change.
+#+begin_lang scala
+sealed abstract class Try[A] {
+  def flatMap[B](f: A => Try[B]): Try[B] =
+    this match {
+      case Success(v) => f(v)
+      case Failure(e) => Failure(e)
+    }
+}
+final case class Success[A](value: A) extends Try[A]
+final case class Failure[A](exception: Throwable) extends Try[A]
+#+end_lang
+
+Notice ~f~ returns a ~Try~ and therefore can introduce a failure.
+
+The expanded understanding of ~map~ and ~flatMap~ is:
+- we're talking about sequencing operations. Operations that work in a defined order. This comes after that.
+- we have values in some context (where ~F~ is the context)
+- ~map~ transforms a value in a context without changing the context.
+- ~flatMap~ can change the context
