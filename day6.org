@@ -1,0 +1,134 @@
+#+TITLE:  Day 6
+* Plan
+- Futures (and hence implicit parameters)
+* Futures
+A ~Future[A]~ is a value in a context, where the context means the value might be available yet (i.e. it may be available in the ... future)
+
+- ~Future[A] map (A => B) = Future[B]~ Perform this transformation on the value if and when it becomes available.
+- ~Future[A] flatMap (A => Future[B]) = Future[B]~ Perform this transformation on the value if and when it becomes available; the transformation itself produces a value that may not be immediately available.
+- Continuation passing style vs direct style. Direct style is much simpler. Futures allow asynchronous computing in direct style.
+- Computing with values---we can compose them. Reifying asynchronous computation as futures allows us to compose operations on asynchronous computation.
+- Await values at boundaries between asynchronous and synchronous computation.
+  Synchronous is normal code: ~(1 + 1) + 2~.
+* Futures in Scala
+~scala.concurrent.Future~ is in the standard library. There are other similar implementations (Twitter Future, Cats Effect IO, Monix, etc.)
+** Execution Contexts
+Execution context is essentially a thread pool. A thread pool is collection of 1 or more threads that will run our asynchronous code.
+
+Typically CPU-bound tasks want as many threads as CPUs.
+Typically IO-bound tasks want lots of threads (how many depends on situation)
+
+Futures start running as soon as they are created. (Not the case in some other systems like Cats Effect.)
+
+Execution contexts build on ~java.util.concurrent.Executor~.
+** Implicit Parameters and Values
+Implicits in Scala. There are four types of implicit things in Scala:
+- implicit parameters: I want a value of a particular type, and the compiler can provide it for me.
+- implicit values: This is a value that the compiler can provide as an implicit parameter.
+- implicit classes: Adds "extension" methods to a class after it is defined
+- implicit conversions: PURE EVIL. Use implicit classes instead.
+- implicit scope: where the compiler will search for implicit values
+*** Implicit Parameters
+A parameter list of a method or class constructor that starts with the keyword ~implicit~. Applies to the entire parameter list, there can be only one [not so in Scala 3], and it must be the last parameter list of the constructor or method.
+
+#+begin_lang scala
+def anExample(a: Int, b: String)(implicit c: Double, d: Double) =
+  s"$b: ${a * c * d}"
+
+final case class MyFuture[A](value: A)(implicit ec: ExecutionContext) {
+  ec.doSomething
+}
+#+end_lang
+
+You can provide implicit parameters explicitly. Nothing special. To see something interesting we need to know about implicit values.
+*** Implicit Values
+Putting ~implicit~ keyword in front of:
+- a ~val~, e.g. ~implicit val x: Double = 2.0~
+- an ~object~, e.g. ~implicit object Example { ... }~
+- a ~def~ with *only* implicit parameters, e.g. ~implicit def aMethod(implicit x: Double) = ...~
+
+declares an implicit value.
+
+If a method or constructor requires an implicit parameter
+AND that parameter has not be explicitly specified
+the compiler will search for an implicit value with the correct type.
+If it finds such a value it will provide that value as the parameter.
+
+#+begin_lang scala
+def anExample(a: Int)(implicit c: Double) =
+  a * c
+
+implicit val x: Double = 4.0
+
+anExample(1)
+#+end_lang
+
+Implicit values, to be selected by the compiler, must be:
+- in the implicit scope
+- not ambiguous
+
+Ambiguity: more than one value with the desired type in the implicit scope. Does not compile.
+*** Implicit Scope
+The implicit scope is where the compiler will look for implicit values. It is:
+- the normal lexical scope
+- the companion object of any type "involved" in the implicit parameter
+
+  #+begin_lang scala
+  final case class Transducer[A](...) {
+    def and(that: Transducer[A])(implicit m: Monoid[A]): Transducer[A] =
+       ???
+  }
+  #+end_lang
+
+  Look in the companion object for
+  - ~A~
+  - ~Monoid~
+  - ~Transducer~
+  for ~Monoid[A]~
+*** Implicit Classes
+Allow us to add methods to a class after the class has been defined.
+
+An implicit class is a class declaration that starts with the keyword ~implicit~.
+
+#+begin_lang scala
+implicit class IntegerOperations(a: Int) {
+  def times(f: () => Unit): Unit =
+    (0.to(a)).foreach(_ => f())
+}
+
+implicit class AOperations[A](a: A) {
+  def happyBirthday: String =
+    s"Happy birthday to ${a}"
+}
+#+end_lang
+
+If we call a method on a value AND
+- that value does not have the method we called
+- there is an implicit class in the implicit scope that we can construct with that value, and the implicit class provides the method we call
+
+THEN the compiler will insert a call to construct the implicit class and call the method
+*** Implicit Conversions
+EVIL EVIL EVIL EVIL EVIL
+
+Implicit classes build on implicit conversions. Implicit classes are more structured.
+
+Implicit conversion is a method marked implicit with *explicit* parameters. An implicit conversion converts some type ~A~ to some other type ~B~. It will be applied by the compiler when it is in the implicit scope and we have a value of type ~A~ but the context expects a value of type ~B~.
+
+#+begin_lang scala
+implicit def stringToInt(a: String): Int = a.size * 2
+#+end_lang
+
+EVIL EVIL EVIL EVIL EVIL
+*** Summary
+- Implicit conversions: evil. Forget they exist.
+- Implicit classes: useful, but only really if you create libraries. Understanding them can handy to understand how a library works.
+- Implicit scope: lexical scope + companion object. Consider putting implicit values in companion objects
+- Implicit values: marks a value for use as an implicit parameter. Three kinds: val, object, and def with implicit parameters. The method (def) type can be used for implicit value composition.
+- Implicit parmeters: indicate you want a value that the compiler may automatically supply for you.
+** Back to the Future!!!
+~Await~ waits for a ~Future~ to complete. Cross the boundary between synchronous and asynchronous code.
+
+*** Failures
+A ~Future~ can fail due to timeout or an error in the asynchronous computation.
+A ~Future~ essentially holds a ~Try~ inside it.
+See the documentation!
